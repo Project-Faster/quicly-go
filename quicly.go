@@ -29,13 +29,13 @@ func Initialize(options Options) int {
 		return result
 	}
 
-	logger.Debug().Msg("Initialized")
+	logger.Info().Msg("Initialized")
 	return errors.QUICLY_OK
 }
 
 func Terminate() {
 	quiclylib.QuiclyCloseEngine()
-	logger.Debug().Msg("Terminated")
+	logger.Info().Msg("Terminated")
 }
 
 func Listen(localAddr *net.UDPAddr, cb types.Callbacks, ctx context.Context) types.ServerSession {
@@ -69,7 +69,7 @@ func Dial(remoteAddr *net.UDPAddr, cb types.Callbacks, ctx context.Context) type
 		Callbacks: cb,
 	}
 
-	conn.Logger.Debug().Msgf("[%v] CONNECT %p", conn.ID(), conn)
+	conn.Logger.Info().Msgf("[%v] CONNECT %p", conn.ID(), conn)
 
 	return conn
 }

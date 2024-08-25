@@ -485,7 +485,7 @@ func handleServerStreamRead(wg *sync.WaitGroup, ctx context.Context, cancel cont
 		total += n
 		if n > 0 {
 			logger.Info().Msgf("Read(%d)", n)
-			logger.Debug().Msgf("Data(%d): %v", n, string(data[:n]))
+			logger.Info().Msgf("Data(%d): %v", n, string(data[:n]))
 		}
 		if err == nil {
 			continue
@@ -531,7 +531,7 @@ func handleServerStreamWrite(wg *sync.WaitGroup, ctx context.Context, cancel con
 		total += n
 		if n > 0 {
 			logger.Info().Msgf("Write(%d)", n)
-			logger.Debug().Msgf("Data(%d): %v", n, string(data[:n]))
+			logger.Info().Msgf("Data(%d): %v", n, string(data[:n]))
 		}
 		if err == nil {
 			continue
@@ -583,7 +583,7 @@ func handleClientStreamRead(wg *sync.WaitGroup, ctx context.Context, cancel cont
 		total += n
 		if n > 0 {
 			logger.Info().Msgf("Read(%d)", n)
-			logger.Debug().Msgf("Data(%d): %v", n, string(data[:n]))
+			logger.Info().Msgf("Data(%d): %v", n, string(data[:n]))
 		}
 		if err == nil {
 			continue
@@ -624,7 +624,7 @@ func handleClientStreamWrite(wg *sync.WaitGroup, ctx context.Context, cancel con
 		total += n
 		if n > 0 {
 			logger.Info().Msgf("Write(%d)", n)
-			logger.Debug().Msgf("Data(%d): %v", n, string(data[:n]))
+			logger.Info().Msgf("Data(%d): %v", n, string(data[:n]))
 		}
 		if err == nil {
 			continue
