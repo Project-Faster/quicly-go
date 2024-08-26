@@ -72,7 +72,7 @@ func (s *QStream) Read(buffRd []byte) (n int, err error) {
 	s.init()
 
 	if s.IsClosed() {
-		s.Logger.Info().Msgf("[%d] QSTREAM CLOSED", s.id)
+		s.Logger.Debug().Msgf("[%d] QSTREAM CLOSED", s.id)
 		return 0, io.ErrClosedPipe
 	}
 
@@ -90,7 +90,7 @@ func (s *QStream) Read(buffRd []byte) (n int, err error) {
 		wr, _ := s.streamInBuf.Read(buffRd[total:])
 		total += wr
 		s.totalRead += uint64(wr)
-		s.Logger.Info().Msgf("QSTREAM READ %d BUFF READ 1: %d / %d / %d", s.id, total, wr, cap(buffRd))
+		s.Logger.Debug().Msgf("QSTREAM READ %d BUFF READ 1: %d / %d / %d", s.id, total, wr, cap(buffRd))
 		if total >= cap(buffRd) {
 			s.inBufferLock.Unlock()
 			return total, nil
@@ -106,7 +106,7 @@ func (s *QStream) Read(buffRd []byte) (n int, err error) {
 			s.inBufferLock.Unlock()
 			total += wr
 			s.totalRead += uint64(wr)
-			s.Logger.Info().Msgf("QSTREAM READ %d BUFF READ 2: %d / %d / %d", s.id, total, wr, cap(buffRd))
+			s.Logger.Debug().Msgf("QSTREAM READ %d BUFF READ 2: %d / %d / %d", s.id, total, wr, cap(buffRd))
 			if total == cap(buffRd) {
 				return total, nil
 			}
@@ -118,7 +118,7 @@ func (s *QStream) Read(buffRd []byte) (n int, err error) {
 			s.inBufferLock.Unlock()
 			total += wr
 			s.totalRead += uint64(wr)
-			s.Logger.Info().Msgf("QSTREAM READ %d BUFF READ 3: %d / %d / %d", s.id, total, wr, cap(buffRd))
+			s.Logger.Debug().Msgf("QSTREAM READ %d BUFF READ 3: %d / %d / %d", s.id, total, wr, cap(buffRd))
 			return total, timeoutError
 		}
 	}
@@ -130,7 +130,7 @@ func (s *QStream) Write(buffWr []byte) (n int, err error) {
 	s.init()
 
 	if s.IsClosed() {
-		s.Logger.Info().Msgf("[%d] QSTREAM OUT CLOSE", s.id)
+		s.Logger.Debug().Msgf("[%d] QSTREAM OUT CLOSE", s.id)
 		return 0, io.ErrClosedPipe
 	}
 
@@ -138,8 +138,8 @@ func (s *QStream) Write(buffWr []byte) (n int, err error) {
 		s.totalWrite += uint64(n)
 	}()
 
-	s.Logger.Info().Msgf("[%v] SEND packet %d bytes [%v]", s.id, len(buffWr), s.ID())
-	defer s.Logger.Info().Msgf("[%d] QSTREAM OUT", s.id)
+	s.Logger.Debug().Msgf("[%v] SEND packet %d bytes [%v]", s.id, len(buffWr), s.ID())
+	defer s.Logger.Debug().Msgf("[%d] QSTREAM OUT", s.id)
 
 	s.outBufferLock.Lock()
 	n, _ = s.streamOutBuf.Write(buffWr)
@@ -157,13 +157,13 @@ func (s *QStream) Write(buffWr []byte) (n int, err error) {
 }
 
 func (s *QStream) flushToStream() {
-	defer s.Logger.Info().Msgf("%v quicly flush end", s.session.ID())
+	defer s.Logger.Debug().Msgf("%v quicly flush end", s.session.ID())
 
 	for !s.IsClosed() {
 		<-time.After(10 * time.Millisecond)
 
 		if s.streamOutBuf.Len() == 0 {
-			s.Logger.Info().Msgf("[%v] SEND sync empty (written:%d / sent:%d / acked:%d)", s.id, s.writtenBytes, s.sentBytes, s.ackedBytes)
+			s.Logger.Debug().Msgf("[%v] SEND sync empty (written:%d / sent:%d / acked:%d)", s.id, s.writtenBytes, s.sentBytes, s.ackedBytes)
 			continue
 		}
 
@@ -175,7 +175,7 @@ func (s *QStream) flushToStream() {
 		if s.IsClosed() {
 			return
 		}
-		s.Logger.Info().Msgf("%v quicly write flush: %d", s.session.ID(), buffSize)
+		s.Logger.Debug().Msgf("%v quicly write flush: %d", s.session.ID(), buffSize)
 		errcode := bindings.QuiclyWriteStream(bindings.Size_t(s.session.ID()), bindings.Size_t(s.id),
 			data[:buffSize], bindings.Size_t(buffSize))
 
@@ -187,7 +187,7 @@ func (s *QStream) flushToStream() {
 			sent, _ := s.waitSentBytes()
 
 			s.sentBytesCh <- sent
-			s.Logger.Info().Msgf("[%v] SEND sync (sent:%d)", s.id, sent)
+			s.Logger.Debug().Msgf("[%v] SEND sync (sent:%d)", s.id, sent)
 		} else {
 			s.sentBytesCh <- uint64(buffSize)
 		}
@@ -225,19 +225,19 @@ func (s *QStream) OnOpened() {
 }
 
 func (s *QStream) OnClosed() error {
-	s.Logger.Info().Msgf("[%d] QSTREAM ON CLOSED", s.id)
+	s.Logger.Debug().Msgf("[%d] QSTREAM ON CLOSED", s.id)
 	s.closed.Store(true)
 	return nil
 }
 
 func (s *QStream) OnSentBytes(size uint64) {
 	s.sentBytes += size
-	s.Logger.Info().Msgf("[%d] QSTREAM SENT %v bytes (%v)", s.id, size, s.sentBytes)
+	s.Logger.Debug().Msgf("[%d] QSTREAM SENT %v bytes (%v)", s.id, size, s.sentBytes)
 }
 
 func (s *QStream) OnAckedSentBytes(size uint64) {
 	s.ackedBytes += size
-	s.Logger.Info().Msgf("[%d] QSTREAM ACKED %v bytes (%v)", s.id, size, s.ackedBytes)
+	s.Logger.Debug().Msgf("[%d] QSTREAM ACKED %v bytes (%v)", s.id, size, s.ackedBytes)
 }
 
 var receivedCounter = 0
@@ -246,11 +246,11 @@ func (s *QStream) OnReceived(data []byte, dataLen int) {
 	s.init()
 
 	if dataLen == 0 {
-		s.Logger.Info().Msgf("[%d] QSTREAM IN EMPTY", s.id)
+		s.Logger.Debug().Msgf("[%d] QSTREAM IN EMPTY", s.id)
 		return
 	}
 	if s.IsClosed() {
-		s.Logger.Info().Msgf("[%d] QSTREAM IN CLOSE", s.id)
+		s.Logger.Debug().Msgf("[%d] QSTREAM IN CLOSE", s.id)
 		return
 	}
 
@@ -258,7 +258,7 @@ func (s *QStream) OnReceived(data []byte, dataLen int) {
 	s.streamInBuf.Write(data[:dataLen])
 	s.inBufferLock.Unlock()
 
-	s.Logger.Info().Msgf("[%v] BUFFER (%d/%d)", s.id, s.streamInBuf.Len(), READ_SIZE)
+	s.Logger.Debug().Msgf("[%v] BUFFER (%d/%d)", s.id, s.streamInBuf.Len(), READ_SIZE)
 
 	receivedCounter++
 
@@ -300,26 +300,26 @@ func (s *QStream) SetWriteDeadline(t time.Time) error {
 func (s *QStream) waitSentBytes() (uint64, error) {
 	begin := s.sentBytes
 
-	s.Logger.Info().Msgf("[%v] SEND START sync (written:%d / sent:%d / acked:%d)", s.id, s.writtenBytes, s.sentBytes, s.ackedBytes)
+	s.Logger.Debug().Msgf("[%v] SEND START sync (written:%d / sent:%d / acked:%d)", s.id, s.writtenBytes, s.sentBytes, s.ackedBytes)
 
 	for s.writtenBytes > 0 && s.sentBytes > 0 && s.sentBytes < s.ackedBytes {
-		//s.Logger.Info().Msgf("[%v] SEND STEP sync (written:%d / sent:%d / acked:%d)", s.id, s.writtenBytes, s.sentBytes, s.ackedBytes)
+		//s.Logger.Debug().Msgf("[%v] SEND STEP sync (written:%d / sent:%d / acked:%d)", s.id, s.writtenBytes, s.sentBytes, s.ackedBytes)
 		if s.IsClosed() {
-			s.Logger.Info().Msgf("[%v] SEND END sync (written:%d / sent:%d / acked:%d)", s.id, s.writtenBytes, s.sentBytes, s.ackedBytes)
-			s.Logger.Info().Msgf("[%d] QSTREAM OUT CLOSE", s.id)
+			s.Logger.Debug().Msgf("[%v] SEND END sync (written:%d / sent:%d / acked:%d)", s.id, s.writtenBytes, s.sentBytes, s.ackedBytes)
+			s.Logger.Debug().Msgf("[%d] QSTREAM OUT CLOSE", s.id)
 			return s.sentBytes - begin, io.ErrClosedPipe
 		}
 	}
-	s.Logger.Info().Msgf("[%v] SEND END sync (written:%d / sent:%d / acked:%d)", s.id, s.writtenBytes, s.sentBytes, s.ackedBytes)
+	s.Logger.Debug().Msgf("[%v] SEND END sync (written:%d / sent:%d / acked:%d)", s.id, s.writtenBytes, s.sentBytes, s.ackedBytes)
 	return s.sentBytes - begin, nil
 }
 
 func (s *QStream) Sync() bool {
-	s.Logger.Info().Msgf("[%v] SEND START sync (written:%d / sent:%d / acked:%d)", s.id, s.writtenBytes, s.sentBytes, s.ackedBytes)
+	s.Logger.Debug().Msgf("[%v] SEND START sync (written:%d / sent:%d / acked:%d)", s.id, s.writtenBytes, s.sentBytes, s.ackedBytes)
 	for s.writtenBytes > 0 && s.sentBytes > 0 && s.writtenBytes > s.ackedBytes {
 		<-time.After(10 * time.Millisecond)
 	}
-	s.Logger.Info().Msgf("[%v] SEND END sync (written:%d / sent:%d / acked:%d)", s.id, s.writtenBytes, s.sentBytes, s.ackedBytes)
+	s.Logger.Debug().Msgf("[%v] SEND END sync (written:%d / sent:%d / acked:%d)", s.id, s.writtenBytes, s.sentBytes, s.ackedBytes)
 	return true
 }
 

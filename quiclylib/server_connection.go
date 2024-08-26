@@ -142,13 +142,13 @@ func (r *QServerConnection) flushOutgoingQueue() int32 {
 
 	var ret = bindings.QuiclyOutgoingMsgQueue(connId, packets_buf, &num_packets)
 	if int(num_packets) == 0 {
-		r.Logger.Info().Msgf("QUICLY flushOutgoingQueue %d: 0", connId)
+		r.Logger.Debug().Msgf("QUICLY flushOutgoingQueue %d: 0", connId)
 		return bindings.QUICLY_OK
 	}
 
 	switch ret {
 	default:
-		r.Logger.Info().Msgf("QUICLY flushOutgoingQueue failed: %v", ret)
+		r.Logger.Debug().Msgf("QUICLY flushOutgoingQueue failed: %v", ret)
 		return ret
 	case bindings.QUICLY_OK:
 		break
@@ -156,7 +156,7 @@ func (r *QServerConnection) flushOutgoingQueue() int32 {
 
 	r.NetConn.SetWriteBuffer(READ_SIZE * QUIC_BLOCK)
 
-	r.Logger.Info().Msgf("CONN flush (%d) %v", num_packets, r.id)
+	r.Logger.Debug().Msgf("CONN flush (%d) %v", num_packets, r.id)
 	for i := 0; i < int(num_packets); i++ {
 		packets_buf[i].Deref() // realize the struct copy from C -> go
 
@@ -165,7 +165,7 @@ func (r *QServerConnection) flushOutgoingQueue() int32 {
 		_ = r.NetConn.SetWriteDeadline(time.Now().Add(WRITE_TIMEOUT))
 
 		n, err := r.NetConn.WriteToUDP(data, r.returnAddr)
-		r.Logger.Info().Msgf("[%v] WRITE packet %d bytes [%v]", r.id, n, err)
+		r.Logger.Debug().Msgf("[%v] WRITE packet %d bytes [%v]", r.id, n, err)
 	}
 	<-time.After(WRITE_PACING)
 
@@ -187,8 +187,8 @@ func (r *QServerConnection) connectionProcess() {
 		}
 	}()
 
-	r.Logger.Info().Msgf("CONN PROC START %v", r.id)
-	defer r.Logger.Info().Msgf("CONN PROC END %v", r.id)
+	r.Logger.Debug().Msgf("CONN PROC START %v", r.id)
+	defer r.Logger.Debug().Msgf("CONN PROC END %v", r.id)
 
 	buffer := make([]*types.Packet, 0, 32)
 
@@ -198,7 +198,7 @@ func (r *QServerConnection) connectionProcess() {
 			return
 
 		case pkt := <-r.incomingQueue:
-			r.Logger.Info().Msgf("CONN IN BUFF %v", pkt.DataLen)
+			r.Logger.Debug().Msgf("CONN IN BUFF %v", pkt.DataLen)
 			buffer = append(buffer, pkt)
 			break
 
@@ -208,7 +208,7 @@ func (r *QServerConnection) connectionProcess() {
 					r.Logger.Error().Msgf("CONN PROC ERR %v", pkt)
 					break
 				}
-				r.Logger.Info().Msgf("CONN PROC %v (%d)", pkt.DataLen, i)
+				r.Logger.Debug().Msgf("CONN PROC %v (%d)", pkt.DataLen, i)
 
 				ret := r.handleProcessPacket(pkt)
 				switch ret {
@@ -228,7 +228,7 @@ func (r *QServerConnection) connectionProcess() {
 			buffer = buffer[:0]
 
 			if ret := r.flushOutgoingQueue(); ret != errors.QUICLY_OK {
-				r.Logger.Info().Msgf("CONN PROC ERR %v", ret)
+				r.Logger.Debug().Msgf("CONN PROC ERR %v", ret)
 				return
 			}
 			break
@@ -246,8 +246,8 @@ func (r *QServerConnection) connectionOutgoing() {
 		}
 	}()
 
-	r.Logger.Info().Msgf("CONN OUT START %v", r.id)
-	defer r.Logger.Info().Msgf("CONN OUT END %v", r.id)
+	r.Logger.Debug().Msgf("CONN OUT START %v", r.id)
+	defer r.Logger.Debug().Msgf("CONN OUT END %v", r.id)
 
 	for {
 		<-time.After(1 * time.Millisecond)
@@ -280,8 +280,8 @@ func (r *QServerConnection) StreamPacket(packet *types.Packet) {
 	if !r.started || packet == nil {
 		return
 	}
-	//r.Logger.Info().Msgf("ON SEND PACKET")
-	//defer r.Logger.Info().Msgf("ON PACKET SENT")
+	//r.Logger.Debug().Msgf("ON SEND PACKET")
+	//defer r.Logger.Debug().Msgf("ON PACKET SENT")
 	//r.outgoingQueue <- packet
 }
 
@@ -317,8 +317,8 @@ func (r *QServerConnection) OnStreamOpen(streamId uint64) {
 }
 
 func (r *QServerConnection) OnStreamClose(streamId uint64, code int) {
-	r.Logger.Info().Msgf(">> On close stream: %d\n", streamId)
-	defer r.Logger.Info().Msgf("<< On close stream: %d\n", streamId)
+	r.Logger.Debug().Msgf(">> On close stream: %d\n", streamId)
+	defer r.Logger.Debug().Msgf("<< On close stream: %d\n", streamId)
 
 	st := r.GetStream(streamId)
 	if st == nil {
@@ -369,7 +369,7 @@ func (r *QServerConnection) Close() error {
 	}
 	r.closing = true
 
-	r.Logger.Info().Msgf("== Connections %v WaitEnd ==\"", r.id)
+	r.Logger.Debug().Msgf("== Connections %v WaitEnd ==\"", r.id)
 
 	r.cancelFunc()
 

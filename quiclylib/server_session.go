@@ -80,7 +80,7 @@ func (s *QServerSession) enqueueConnAccept(conn *QServerConnection) {
 
 func (s *QServerSession) connectionAdd(addr *net.UDPAddr) *QServerConnection {
 	addrHash := addrToHash(addr)
-	s.Logger.Info().Msgf("HASH: %v -> %v", addr, addrHash)
+	s.Logger.Debug().Msgf("HASH: %v -> %v", addr, addrHash)
 
 	s.enterCritical()
 	defer s.exitCritical()
@@ -90,7 +90,7 @@ func (s *QServerSession) connectionAdd(addr *net.UDPAddr) *QServerConnection {
 		targetHandler = &QServerConnection{}
 		targetHandler.init(s, addr, addrHash)
 
-		s.Logger.Info().Msgf("CONN ADD %d (%v / %v)", targetHandler.ID(), addr, addrHash)
+		s.Logger.Debug().Msgf("CONN ADD %d (%v / %v)", targetHandler.ID(), addr, addrHash)
 		s.connections[addrHash] = targetHandler
 	}
 	return targetHandler
@@ -108,7 +108,7 @@ func (s *QServerSession) connectionDelete(id uint64) {
 		}
 	}
 	if deleteHash != 0 {
-		s.Logger.Info().Msgf("CONN DELETE %d", id)
+		s.Logger.Debug().Msgf("CONN DELETE %d", id)
 		delete(s.connections, deleteHash)
 		bindings.RemoveConnection(id)
 	}
@@ -148,7 +148,7 @@ func (s *QServerSession) connectionInHandler() {
 		if n == 0 || (n == 0 && err != nil) {
 			continue
 		}
-		s.Logger.Info().Msgf("SESSION %v READ [%v]: %d (%v)", s.id, n, addr, err)
+		s.Logger.Debug().Msgf("SESSION %v READ [%v]: %d (%v)", s.id, n, addr, err)
 
 		buf := buffList[0]
 		buffList = buffList[1:]
@@ -160,9 +160,9 @@ func (s *QServerSession) connectionInHandler() {
 		}
 
 		conn := s.connectionAdd(addr)
-		s.Logger.Info().Msgf(">> SESSION %v SEND: %d (handler:%v)", s.id, n, conn.id)
+		s.Logger.Debug().Msgf(">> SESSION %v SEND: %d (handler:%v)", s.id, n, conn.id)
 		conn.receiveIncomingPacket(pkt)
-		s.Logger.Info().Msgf("<< SESSION %v SEND [%v]: %d (handler:%v)", s.id, addr, n, conn.id)
+		s.Logger.Debug().Msgf("<< SESSION %v SEND [%v]: %d (handler:%v)", s.id, addr, n, conn.id)
 	}
 }
 
@@ -232,7 +232,7 @@ func (s *QServerSession) Accept() (types.ServerConnection, error) {
 	for {
 		select {
 		case st := <-s.connAcceptQueue:
-			s.Logger.Info().Msgf("QUICLY accepted new stream: %v", st)
+			s.Logger.Debug().Msgf("QUICLY accepted new stream: %v", st)
 			return st, nil
 		case <-s.Ctx.Done():
 			s.Logger.Error().Msgf("Server connection context closed")
@@ -253,7 +253,7 @@ func (s *QServerSession) Close() error {
 		if s.OnConnectionClose != nil {
 			s.OnConnectionClose(s)
 		}
-		s.Logger.Info().Msgf("ServerSession terminated")
+		s.Logger.Debug().Msgf("ServerSession terminated")
 	}()
 	s.enterCritical()
 	for _, handler := range s.connections {
