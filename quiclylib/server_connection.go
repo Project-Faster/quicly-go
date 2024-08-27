@@ -154,9 +154,11 @@ func (r *QServerConnection) flushOutgoingQueue() int32 {
 		break
 	}
 
-	r.NetConn.SetWriteBuffer(READ_SIZE * QUIC_BLOCK)
+	r.NetConn.SetWriteBuffer(32 * QUIC_BLOCK)
 
 	r.Logger.Debug().Msgf("CONN flush (%d) %v", num_packets, r.id)
+
+	r.enterCritical(true)
 	for i := 0; i < int(num_packets); i++ {
 		packets_buf[i].Deref() // realize the struct copy from C -> go
 
@@ -167,7 +169,8 @@ func (r *QServerConnection) flushOutgoingQueue() int32 {
 		n, err := r.NetConn.WriteToUDP(data, r.returnAddr)
 		r.Logger.Debug().Msgf("[%v] WRITE packet %d bytes [%v]", r.id, n, err)
 	}
-	<-time.After(WRITE_PACING)
+	r.exitCritical(true)
+	//<-time.After(WRITE_PACING)
 
 	runtime.KeepAlive(num_packets)
 	runtime.KeepAlive(packets_buf)
@@ -401,10 +404,10 @@ func (r *QServerConnection) Close() error {
 
 		r.routinesWaiter.Wait()
 
+		<-time.After(2 * time.Second) // linger connection
+
 		var ptrId = bindings.Size_t(r.id)
 		var err = bindings.QuiclyClose(ptrId, 0)
-
-		r.flushOutgoingQueue()
 
 		r.session.connectionDelete(r.id)
 

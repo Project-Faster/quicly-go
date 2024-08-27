@@ -135,7 +135,7 @@ func (s *QClientSession) connectionInHandler() {
 
 	var counter = 0
 
-	s.NetConn.SetReadBuffer(32 * 1280 * 1024)
+	_ = s.NetConn.SetReadBuffer(32 * QUIC_BLOCK)
 
 	for {
 		select {
@@ -246,9 +246,11 @@ func (s *QClientSession) flushOutgoingQueue() int32 {
 		break
 	}
 
-	s.NetConn.SetWriteBuffer(READ_SIZE * QUIC_BLOCK)
+	s.NetConn.SetWriteBuffer(32 * QUIC_BLOCK)
 
 	s.Logger.Debug().Msgf("CONN flush (%d) %v", num_packets, s.id)
+
+	s.enterCritical(true)
 	for i := 0; i < int(num_packets); i++ {
 		packets_buf[i].Deref() // realize the struct copy from C -> go
 
@@ -259,7 +261,8 @@ func (s *QClientSession) flushOutgoingQueue() int32 {
 		n, err := s.NetConn.Write(data)
 		s.Logger.Debug().Msgf("[%v] SEND packet %d bytes [%v]", s.id, n, err)
 	}
-	<-time.After(WRITE_PACING)
+	s.exitCritical(true)
+	//<-time.After(WRITE_PACING)
 
 	runtime.KeepAlive(num_packets)
 	runtime.KeepAlive(packets_buf)
