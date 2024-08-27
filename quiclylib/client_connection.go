@@ -135,8 +135,6 @@ func (s *QClientSession) connectionInHandler() {
 
 	var counter = 0
 
-	_ = s.NetConn.SetReadBuffer(32 * QUIC_BLOCK)
-
 	for {
 		select {
 		case <-s.Ctx.Done():
@@ -245,8 +243,6 @@ func (s *QClientSession) flushOutgoingQueue() int32 {
 	case bindings.QUICLY_OK:
 		break
 	}
-
-	s.NetConn.SetWriteBuffer(32 * QUIC_BLOCK)
 
 	s.Logger.Debug().Msgf("CONN flush (%d) %v", num_packets, s.id)
 
@@ -433,8 +429,6 @@ func (s *QClientSession) Close() error {
 
 		var connId = bindings.Size_t(s.id)
 		var err = bindings.QuiclyClose(connId, 0)
-
-		s.flushOutgoingQueue()
 
 		bindings.RemoveConnection(s.id)
 		s.Logger.Warn().Msgf(">> Quicly Close %d(%v): %v", s.id, s.id, err)

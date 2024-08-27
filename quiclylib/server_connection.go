@@ -154,11 +154,9 @@ func (r *QServerConnection) flushOutgoingQueue() int32 {
 		break
 	}
 
-	r.NetConn.SetWriteBuffer(32 * QUIC_BLOCK)
+	r.Logger.Info().Msgf("CONN flush (%d) %v", num_packets, r.id)
 
-	r.Logger.Debug().Msgf("CONN flush (%d) %v", num_packets, r.id)
-
-	r.enterCritical(true)
+	r.enterCritical(false)
 	for i := 0; i < int(num_packets); i++ {
 		packets_buf[i].Deref() // realize the struct copy from C -> go
 
@@ -167,9 +165,9 @@ func (r *QServerConnection) flushOutgoingQueue() int32 {
 		_ = r.NetConn.SetWriteDeadline(time.Now().Add(WRITE_TIMEOUT))
 
 		n, err := r.NetConn.WriteToUDP(data, r.returnAddr)
-		r.Logger.Debug().Msgf("[%v] WRITE packet %d bytes [%v]", r.id, n, err)
+		r.Logger.Info().Msgf("[%v] WRITE packet %d bytes [%v]", r.id, n, err)
 	}
-	r.exitCritical(true)
+	r.exitCritical(false)
 	//<-time.After(WRITE_PACING)
 
 	runtime.KeepAlive(num_packets)
