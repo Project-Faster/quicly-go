@@ -258,7 +258,6 @@ func (s *QClientSession) flushOutgoingQueue() int32 {
 		s.Logger.Debug().Msgf("[%v] SEND packet %d bytes [%v]", s.id, n, err)
 	}
 	s.exitCritical(true)
-	//<-time.After(WRITE_PACING)
 
 	runtime.KeepAlive(num_packets)
 	runtime.KeepAlive(packets_buf)

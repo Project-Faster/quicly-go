@@ -97,6 +97,8 @@ func (r *QServerConnection) init(session *QServerSession, addr *net.UDPAddr, add
 
 	r.routinesWaiter.Add(2)
 
+	bindings.RegisterConnection(r, r.id)
+
 	go r.connectionProcess()
 	go r.connectionOutgoing()
 
@@ -125,16 +127,14 @@ func (r *QServerConnection) receiveIncomingPacket(pkt *types.Packet) {
 func (r *QServerConnection) handleProcessPacket(pkt *types.Packet) int32 {
 	addr, port := pkt.Address()
 
-	err := bindings.QuiclyProcessMsg(int32(0), addr, int32(port), pkt.Data, bindings.Size_t(pkt.DataLen), bindings.Size_t(r.id))
-
-	if err == errors.QUICLY_OK {
-		bindings.RegisterConnection(r, r.id)
-	}
-
-	return err
+	return bindings.QuiclyProcessMsg(int32(0), addr, int32(port), pkt.Data, bindings.Size_t(pkt.DataLen), bindings.Size_t(r.id))
 }
 
 func (r *QServerConnection) flushOutgoingQueue() int32 {
+	if !r.started {
+		return bindings.QUICLY_ERROR_NOTINITILIZED
+	}
+
 	num_packets := bindings.Size_t(4096)
 	packets_buf := make([]bindings.Iovec, 4096)
 
@@ -165,7 +165,7 @@ func (r *QServerConnection) flushOutgoingQueue() int32 {
 		_ = r.NetConn.SetWriteDeadline(time.Now().Add(WRITE_TIMEOUT))
 
 		n, err := r.NetConn.WriteToUDP(data, r.returnAddr)
-		r.Logger.Info().Msgf("[%v] WRITE packet %d bytes [%v]", r.id, n, err)
+		r.Logger.Debug().Msgf("[%v] WRITE packet %d bytes [%v]", r.id, n, err)
 	}
 	r.exitCritical(false)
 	//<-time.After(WRITE_PACING)
@@ -188,6 +188,10 @@ func (r *QServerConnection) connectionProcess() {
 		}
 	}()
 
+	for !r.started {
+		<-time.After(5 * time.Millisecond)
+	}
+
 	r.Logger.Debug().Msgf("CONN PROC START %v", r.id)
 	defer r.Logger.Debug().Msgf("CONN PROC END %v", r.id)
 
@@ -199,8 +203,10 @@ func (r *QServerConnection) connectionProcess() {
 			return
 
 		case pkt := <-r.incomingQueue:
-			r.Logger.Debug().Msgf("CONN IN BUFF %v", pkt.DataLen)
-			buffer = append(buffer, pkt)
+			if pkt != nil {
+				r.Logger.Debug().Msgf("CONN IN BUFF %v", pkt.DataLen)
+				buffer = append(buffer, pkt)
+			}
 			break
 
 		case <-time.After(5 * time.Millisecond):
@@ -246,6 +252,10 @@ func (r *QServerConnection) connectionOutgoing() {
 			debug.PrintStack()
 		}
 	}()
+
+	for !r.started {
+		<-time.After(5 * time.Millisecond)
+	}
 
 	r.Logger.Debug().Msgf("CONN OUT START %v", r.id)
 	defer r.Logger.Debug().Msgf("CONN OUT END %v", r.id)
