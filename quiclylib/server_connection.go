@@ -25,6 +25,7 @@ type QServerConnection struct {
 	// unexported fields
 	id         uint64
 	started    bool
+	accepted   bool
 	closing    bool
 	session    *QServerSession
 	returnAddr *net.UDPAddr
@@ -81,6 +82,7 @@ func (r *QServerConnection) init(session *QServerSession, addr *net.UDPAddr, add
 	}
 
 	r.started = true
+	r.accepted = false
 	r.closing = false
 
 	r.session = session
@@ -154,7 +156,7 @@ func (r *QServerConnection) flushOutgoingQueue() int32 {
 		break
 	}
 
-	r.Logger.Info().Msgf("CONN flush (%d) %v", num_packets, r.id)
+	r.Logger.Debug().Msgf("CONN flush (%d) %v", num_packets, r.id)
 
 	r.enterCritical(false)
 	for i := 0; i < int(num_packets); i++ {
@@ -168,7 +170,6 @@ func (r *QServerConnection) flushOutgoingQueue() int32 {
 		r.Logger.Debug().Msgf("[%v] WRITE packet %d bytes [%v]", r.id, n, err)
 	}
 	r.exitCritical(false)
-	//<-time.After(WRITE_PACING)
 
 	runtime.KeepAlive(num_packets)
 	runtime.KeepAlive(packets_buf)
@@ -187,10 +188,6 @@ func (r *QServerConnection) connectionProcess() {
 			//_ = r.Close()
 		}
 	}()
-
-	for !r.started {
-		<-time.After(5 * time.Millisecond)
-	}
 
 	r.Logger.Debug().Msgf("CONN PROC START %v", r.id)
 	defer r.Logger.Debug().Msgf("CONN PROC END %v", r.id)
@@ -229,6 +226,7 @@ func (r *QServerConnection) connectionProcess() {
 					r.Logger.Error().Msgf("[%v] Received %d bytes (failed processing %v)", r.id, pkt.DataLen, ret)
 					break
 				case bindings.QUICLY_OK:
+					r.accepted = true
 					break
 				}
 			}
@@ -253,8 +251,8 @@ func (r *QServerConnection) connectionOutgoing() {
 		}
 	}()
 
-	for !r.started {
-		<-time.After(5 * time.Millisecond)
+	for !r.accepted {
+		<-time.After(1 * time.Millisecond)
 	}
 
 	r.Logger.Debug().Msgf("CONN OUT START %v", r.id)
