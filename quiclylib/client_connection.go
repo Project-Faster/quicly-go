@@ -180,7 +180,7 @@ func (s *QClientSession) connectionProcessHandler() {
 	for {
 		select {
 		case <-s.Ctx.Done():
-			s.Logger.Warn().Msgf("CONN PROC STOP %v", s.id)
+			s.Logger.Debug().Msgf("CONN PROC STOP %v", s.id)
 			return
 
 		case pkt := <-s.incomingQueue:
@@ -337,8 +337,8 @@ func (s *QClientSession) OnStreamOpen(streamId uint64) {
 }
 
 func (s *QClientSession) OnStreamClose(streamId uint64, error int) {
-	s.Logger.Info().Msgf("STREAM CLOSE START: %d\n", streamId)
-	defer s.Logger.Info().Msgf("STREAM CLOSE END: %d\n", streamId)
+	s.Logger.Debug().Msgf("STREAM CLOSE START: %d\n", streamId)
+	defer s.Logger.Debug().Msgf("STREAM CLOSE END: %d\n", streamId)
 
 	s.enterCritical(false)
 	st, ok := s.streams[streamId]
@@ -390,8 +390,6 @@ func (s *QClientSession) Close() error {
 	}
 	s.exitCritical(false)
 
-	s.Logger.Warn().Msgf(">> streams to close: %v", tmpStreams)
-
 	wg := &sync.WaitGroup{}
 	wg.Add(len(tmpStreams))
 
@@ -413,7 +411,7 @@ func (s *QClientSession) Close() error {
 		wg.Wait()
 
 		s.enterCritical(false)
-		s.Logger.Warn().Msgf(">> Close queues %d(%v)", s.id, s.id)
+		s.Logger.Debug().Msgf(">> Close queues %d(%v)", s.id, s.id)
 		safeClose(s.incomingQueue)
 		_ = s.NetConn.Close()
 		s.exitCritical(false)
@@ -423,14 +421,14 @@ func (s *QClientSession) Close() error {
 
 			s.OnConnectionClose(s)
 		}
-		s.Logger.Warn().Msgf(">> Wait routines %d(%v)", s.id, s.id)
+		s.Logger.Debug().Msgf(">> Wait routines %d(%v)", s.id, s.id)
 		s.handlersWaiter.Wait()
 
 		var connId = bindings.Size_t(s.id)
 		var err = bindings.QuiclyClose(connId, 0)
 
 		bindings.RemoveConnection(s.id)
-		s.Logger.Warn().Msgf(">> Quicly Close %d: %v", s.id, err)
+		s.Logger.Debug().Msgf(">> Quicly Close %d: %v", s.id, err)
 	}()
 
 	return nil
