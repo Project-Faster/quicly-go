@@ -35,9 +35,6 @@ type QClientSession struct {
 
 	exclusiveLock sync.RWMutex
 
-	firstStreamOpen    bool
-	waitStreamOpenLock sync.RWMutex
-
 	incomingQueue chan *types.Packet
 }
 
@@ -130,20 +127,21 @@ func (s *QClientSession) connectionInHandler() {
 		buffList = append(buffList, make([]byte, SMALL_BUFFER_SIZE))
 	}
 
-	s.Logger.Info().Msgf("CONN IN START %v", s.id)
-	defer s.Logger.Info().Msgf("CONN IN END %v", s.id)
+	s.Logger.Debug().Msgf("CONN IN START %v", s.id)
+	defer s.Logger.Debug().Msgf("CONN IN END %v", s.id)
 
 	var counter = 0
 
 	for {
 		select {
 		case <-s.Ctx.Done():
+			s.Logger.Debug().Msgf("CONN IN STOP %v", s.id)
 			return
 		default:
 			break
 		}
 
-		//s.NetConn.SetReadDeadline(time.Now().Add(1 * time.Second))
+		s.NetConn.SetReadDeadline(time.Now().Add(1 * time.Second))
 
 		n, addr, err := s.NetConn.ReadFromUDP(buffList[0])
 		s.Logger.Debug().Msgf("[%v] UDP packet %d %v (%d)", s.id, n, addr, counter)
@@ -182,6 +180,7 @@ func (s *QClientSession) connectionProcessHandler() {
 	for {
 		select {
 		case <-s.Ctx.Done():
+			s.Logger.Warn().Msgf("CONN PROC STOP %v", s.id)
 			return
 
 		case pkt := <-s.incomingQueue:
@@ -230,6 +229,7 @@ func (s *QClientSession) flushOutgoingQueue() int32 {
 
 	var ret = bindings.QuiclyOutgoingMsgQueue(bindings.Size_t(s.id), packets_buf, &num_packets)
 	if int(num_packets) == 0 {
+		s.Logger.Debug().Msgf("QUICLY flushOutgoingQueue %d: 0", s.id)
 		return ret
 	}
 
@@ -337,8 +337,8 @@ func (s *QClientSession) OnStreamOpen(streamId uint64) {
 }
 
 func (s *QClientSession) OnStreamClose(streamId uint64, error int) {
-	s.Logger.Debug().Msgf(">> On close stream: %d\n", streamId)
-	defer s.Logger.Debug().Msgf("<< On close stream: %d\n", streamId)
+	s.Logger.Info().Msgf("STREAM CLOSE START: %d\n", streamId)
+	defer s.Logger.Info().Msgf("STREAM CLOSE END: %d\n", streamId)
 
 	s.enterCritical(false)
 	st, ok := s.streams[streamId]
@@ -430,7 +430,7 @@ func (s *QClientSession) Close() error {
 		var err = bindings.QuiclyClose(connId, 0)
 
 		bindings.RemoveConnection(s.id)
-		s.Logger.Warn().Msgf(">> Quicly Close %d(%v): %v", s.id, s.id, err)
+		s.Logger.Warn().Msgf(">> Quicly Close %d: %v", s.id, err)
 	}()
 
 	return nil

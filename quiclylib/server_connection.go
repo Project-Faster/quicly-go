@@ -362,7 +362,6 @@ func (r *QServerConnection) Accept() (types.Stream, error) {
 		case st := <-r.streamAcceptQueue:
 			return st, nil
 		case <-r.Ctx.Done():
-			r.Close()
 			return nil, io.ErrClosedPipe
 		case <-time.After(1 * time.Millisecond):
 			break
