@@ -215,13 +215,13 @@ func (s *QStream) Close() error {
 	for !s.closed.Load().(bool) {
 		time.Sleep(10 * time.Millisecond)
 	}
-	s.Logger.Info().Msgf("[%d] QSTREAM CLOSE [read:%v,write:%d]", s.id, s.totalRead, s.totalWrite)
+	s.Logger.Debug().Msgf("[%d] QSTREAM CLOSE [read:%v,write:%d]", s.id, s.totalRead, s.totalWrite)
 
 	return nil
 }
 
 func (s *QStream) OnOpened() {
-	s.Logger.Info().Msgf("[%d] QSTREAM OPEN", s.id)
+	s.Logger.Debug().Msgf("[%d] QSTREAM OPEN", s.id)
 }
 
 func (s *QStream) OnClosed() error {

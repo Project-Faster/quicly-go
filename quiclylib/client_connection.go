@@ -394,9 +394,9 @@ func (s *QClientSession) Close() error {
 		go func(st types.Stream) {
 			defer wg.Done()
 
-			s.Logger.Warn().Msgf(">> Trying to close stream %d / %p", st.ID(), st)
+			s.Logger.Debug().Msgf(">> Trying to close stream %d / %p", st.ID(), st)
 			st.Close()
-			s.Logger.Warn().Msgf(">> Closed stream %d / %p", st.ID(), st)
+			s.Logger.Debug().Msgf(">> Closed stream %d / %p", st.ID(), st)
 		}(stream)
 	}
 

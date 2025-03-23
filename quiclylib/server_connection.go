@@ -388,9 +388,9 @@ func (r *QServerConnection) Close() error {
 		go func(st types.Stream) {
 			defer wg.Done()
 
-			r.Logger.Warn().Msgf(">> Trying to close stream %d:%d", r.id, st.ID())
+			r.Logger.Debug().Msgf(">> Trying to close stream %d:%d", r.id, st.ID())
 			err := st.Close()
-			r.Logger.Warn().Msgf(">> Closed stream %d:%d (%v)", r.id, st.ID(), err)
+			r.Logger.Debug().Msgf(">> Closed stream %d:%d (%v)", r.id, st.ID(), err)
 		}(stream)
 	}
 
